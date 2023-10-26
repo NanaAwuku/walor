@@ -20,7 +20,7 @@ contract SavingsGroup {
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Only the owner can perform tthis action");
+        require(msg.sender == owner, "Only the owner can perform this action");
         _;
     }
 

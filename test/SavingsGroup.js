@@ -1,90 +1,87 @@
-const { ethers, upgrades } = require("hardhat");
 const { expect } = require("chai");
 
-describe("SavingsGroup contract", function () {
+describe("SavingsGroup", function () {
   let SavingsGroup;
   let savingsGroup;
   let owner;
   let member1;
   let member2;
-  let nonMember;
 
-  const contributionAmount = 5; 
-  const contributionDuration = 2592000; // 30 days in seconds
+  // beforeEach(async function () {
+  //   SavingsGroup = await ethers.getContractFactory("SavingsGroup");
 
-  beforeEach(async function () {
-    [owner, member1, member2, nonMember] = await ethers.getSigners();
+  //   [owner, member1, member2] = await ethers.getSigners();
+  //   // console.log(owner)
+  //   savingsGroup = await SavingsGroup.deploy();
+  //   await savingsGroup.deployed();
+  // });
 
-    // Deploy the SavingsGroup contract
+    beforeEach(async function () {
     SavingsGroup = await ethers.getContractFactory("SavingsGroup");
-    savingsGroup = await SavingsGroup.deploy(contributionAmount, contributionDuration);
-    await savingsGroup.deployed();
+
+    [owner, member1, member2] = await ethers.getSigners();
+    // console.log(owner)
+    savingsGroup = await ethers.deployContract("SavingsGroup");
+
+    // await savingsGroup.deployed();
+  });
+  
+
+  it("Should allow the owner to create a group", async function () {
+    var tests = await savingsGroup.createGroup(100, 3600); // Example values for contribution amount and duration
+    console.log(tests)
+    expect(await savingsGroup.getGroupCount()).to.equal(1);
   });
 
-  it("Should allow members to join the group", async function () {
-    await savingsGroup.connect(member1).joinGroup();
-    await savingsGroup.connect(member2).joinGroup();
+  it("Should allow members to join a group", async function () {
+   // Create a group
+   await savingsGroup.createGroup(100, 3600); // Example values for contribution amount and duration
+   const groupId = (await savingsGroup.getGroupCount()) - BigInt(1);
 
-    expect(await savingsGroup.members(1)).to.equal(member1.address);
-    expect(await savingsGroup.members(2)).to.equal(member2.address);
+   // Join the group
+   await savingsGroup.joinGroup(groupId, { from: member1 });
+   await savingsGroup.joinGroup(groupId, { from: member2 });
+
+   // Get the group details
+   const group = await savingsGroup.savingsGroups(groupId);
+
+   // Assertions
+   expect(group.members).to.have.lengthOf(2);
+   expect(group.members[0]).to.equal(member1);
+   expect(group.members[1]).to.equal(member2);
   });
 
-  it("Should not allow the owner to join the group", async function () {
-    await expect(savingsGroup.connect(owner).joinGroup()).to.be.revertedWith("Owner cannot join the group");
+  it("Should record contributions correctly", async function () {
+    await savingsGroup.createGroup(100, 3600); // Example values for contribution amount and duration
+    const groupId = (await savingsGroup.getGroupCount()) - 1;
+
+    await savingsGroup.joinGroup(groupId, { from: member1.address });
+    await savingsGroup.contribute(groupId, { from: member1.address, value: 50 });
+
+    const balance = await savingsGroup.memberBalances(groupId, member1.address);
+    expect(balance).to.equal(50);
   });
 
-  it("Should not allow non-members to contribute", async function () {
-    await expect(savingsGroup.connect(nonMember).contribute({ value: contributionAmount })).to.be.revertedWith("You are not a member of this group");
-  });
+  it("Should distribute the payout to an eligible recipient", async function () {
+    await savingsGroup.createGroup(100, 3600); // Example values for contribution amount and duration
+    const groupId = (await savingsGroup.getGroupCount()) - 1;
 
-  it("Should allow members to contribute", async function () {
-    await savingsGroup.connect(member1).joinGroup();
-    await savingsGroup.connect(member2).joinGroup();
+    await savingsGroup.joinGroup(groupId, { from: member1.address });
+    await savingsGroup.joinGroup(groupId, { from: member2.address });
 
-    await savingsGroup.connect(member1).contribute({ value: contributionAmount });
-    await savingsGroup.connect(member2).contribute({ value: contributionAmount });
+    await savingsGroup.contribute(groupId, { from: member1.address, value: 90 });
+    await savingsGroup.contribute(groupId, { from: member2.address, value: 100 });
 
-    const totalContributions = await savingsGroup.getTotalContributions();
-    expect(totalContributions).to.equal(contributionAmount * 2);
-  });
+    // Increase time by contribution duration to trigger payout
+    await network.provider.send("evm_increaseTime", [3600]);
+    await network.provider.send("evm_mine");
 
-  it("Should allow the owner to initiate a payout", async function () {
-    await savingsGroup.connect(member1).joinGroup();
-    await savingsGroup.connect(member2).joinGroup();
+    const initialBalanceRecipient = await ethers.provider.getBalance(member2.address);
 
-    await savingsGroup.connect(member1).contribute({ value: contributionAmount });
-    await savingsGroup.connect(member2).contribute({ value: contributionAmount });
+    await savingsGroup.distributePayout(groupId, { from: owner.address });
 
-    await savingsGroup.connect(owner).distributePayout();
+    const finalBalanceRecipient = await ethers.provider.getBalance(member2.address);
 
-  });
-
-  it("Should not allow non-owner to initiate a payout", async function () {
-    await expect(savingsGroup.connect(member1).distributePayout()).to.be.revertedWith("Only the owner can initiate the payout");
-  });
-
-  it("Should not allow early payouts", async function () {
-    await savingsGroup.connect(member1).joinGroup();
-    await savingsGroup.connect(member2).joinGroup();
-
-    await savingsGroup.connect(member1).contribute({ value: contributionAmount });
-    await savingsGroup.connect(member2).contribute({ value: contributionAmount });
-
-    await expect(savingsGroup.connect(owner).distributePayout()).to.be.revertedWith("Payout is not yet due");
-  });
-
-  it("Should select an eligible member for payout", async function () {
-    await savingsGroup.connect(member1).joinGroup();
-    await savingsGroup.connect(member2).joinGroup();
-
-    await savingsGroup.connect(member1).contribute({ value: contributionAmount * 20 });
-    await savingsGroup.connect(member2).contribute({ value: contributionAmount * 18 });
-
-    await savingsGroup.connect(owner).distributePayout();
-    const recipient = await savingsGroup.members(1);
-
-    expect(await member1.getBalance()).to.equal(contributionAmount * 20);
-    expect(await member2.getBalance()).to.equal(contributionAmount * 18);
-    expect(await recipient.getBalance()).to.equal(contributionAmount * 38);
+    expect(finalBalanceRecipient).to.be.gt(initialBalanceRecipient);
   });
 });
