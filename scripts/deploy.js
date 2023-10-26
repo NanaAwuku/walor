@@ -12,7 +12,7 @@ async function main() {
 
   const lockedAmount = hre.ethers.parseEther("0.001");
 
-  const lock = await hre.ethers.deployContract("SavingsGroup", [unlockTime], {
+  const lock = await hre.ethers.deployContract("SavingsGroup", {
     value: lockedAmount,
   });
 

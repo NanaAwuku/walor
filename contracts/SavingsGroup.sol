@@ -3,62 +3,88 @@ pragma solidity ^0.8.0;
 
 contract SavingsGroup {
     address public owner;
-    uint256 public contributionAmount;
-    uint256 public contributionDuration; 
-    uint256 public lastPayoutTime;
-    uint256 public totalContributions; 
 
-    struct Member {
-        address memberAddress;
-        uint256 totalContributions;
+    struct Group {
+        uint256 contributionAmount;
+        uint256 contributionDuration;
+        address[] members;
     }
 
-    Member[] public members;
+    Group[] public savingsGroups;
+    mapping(uint256 => mapping(address => uint256)) memberBalances;
 
-    constructor(uint256 _contributionAmount, uint256 _contributionDuration) {
+    event Contribution(address indexed member, uint256 indexed groupId, uint256 amount);
+
+    constructor() {
         owner = msg.sender;
-        contributionAmount = _contributionAmount;
-        contributionDuration = _contributionDuration;
-        lastPayoutTime = block.timestamp;
     }
 
-    function joinGroup() external {
-        require(msg.sender != owner, "Owner cannot join the group");
-        members.push(Member(msg.sender, 0));
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only the owner can perform tthis action");
+        _;
     }
 
-    function contribute() external payable {
-        for (uint256 i = 0; i < members.length; i++) {
-            if (members[i].memberAddress == msg.sender) {
-                members[i].totalContributions += msg.value;
-                totalContributions += msg.value; 
-                return;
+    function createGroup(uint256 _contributionAmount, uint256 _contributionDuration) external onlyOwner {
+        savingsGroups.push(Group(_contributionAmount, _contributionDuration, new address[](0)));
+    }
+
+    function joinGroup(uint256 groupId) external {
+        require(groupId < savingsGroups.length, "Group does not exist");
+        savingsGroups[groupId].members.push(msg.sender);
+    }
+
+    function contribute(uint256 groupId) external payable {
+        require(groupId < savingsGroups.length, "Group does not exist");
+        Group storage group = savingsGroups[groupId];
+
+        require(memberOfGroup(groupId, msg.sender), "You are not a member of this group");
+        require(msg.value == group.contributionAmount, "Contribution amount does not match the group's requirement");
+
+        uint256 memberIndex = getMemberIndex(groupId, msg.sender);
+
+        require(memberIndex < group.members.length, "Member not found in the group");
+        uint256 previousBalance = memberBalances[groupId][msg.sender];
+
+        require(previousBalance + msg.value <= group.contributionAmount, "Contribution exceeds the group's limit");
+
+        memberBalances[groupId][msg.sender] = previousBalance + msg.value;
+
+        emit Contribution(msg.sender, groupId, msg.value);
+    }
+
+    function distributePayout(uint256 groupId) external onlyOwner {
+        require(groupId < savingsGroups.length, "Group does not exist");
+        Group storage group = savingsGroups[groupId];
+
+        uint256 targetContributions = group.contributionAmount * group.members.length;
+
+        for (uint256 i = 0; i < group.members.length; i++) {
+            if (eligibleForPayout(groupId, group.members[i], targetContributions)) {
+                payable(group.members[i]).transfer(group.contributionAmount);
             }
         }
-        revert("You are not a member of this group");
     }
 
-    function getTotalContributions() external view returns (uint256) {
-        return totalContributions;
+    function memberOfGroup(uint256 groupId, address member) internal view returns (bool) {
+        return getMemberIndex(groupId, member) < savingsGroups[groupId].members.length;
     }
 
-    function distributePayout() external {
-        require(msg.sender == owner, "Only the owner can initiate the payout");
-        require(block.timestamp - lastPayoutTime >= contributionDuration, "Payout is not yet due");
-
-        uint256 targetContributions = (members.length * contributionAmount * 30); // Assuming a 30-day month
-        address payoutRecipient = address(0);
-
-        for (uint256 i = 0; i < members.length; i++) {
-            if (members[i].totalContributions >= (targetContributions * 9) / 10) {
-                payoutRecipient = members[i].memberAddress;
-                break;
+    function getMemberIndex(uint256 groupId, address member) internal view returns (uint256) {
+        Group storage group = savingsGroups[groupId];
+        for (uint256 i = 0; i < group.members.length; i++) {
+            if (group.members[i] == member) {
+                return i;
             }
         }
+        return group.members.length;
+    }
 
-        require(payoutRecipient != address(0), "No eligible recipient found");
+    function eligibleForPayout(uint256 groupId, address member, uint256 targetContributions) internal view returns (bool) {
+        uint256 memberContributions = memberBalances[groupId][member];
+        return (memberContributions >= (targetContributions * 9) / 10);
+    }
 
-        payable(payoutRecipient).transfer(address(this).balance);
-        lastPayoutTime = block.timestamp;
+    function getGroupCount() external view returns (uint256) {
+        return savingsGroups.length;
     }
 }
