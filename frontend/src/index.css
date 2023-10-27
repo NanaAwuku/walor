@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* styles.css */
+.group-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.group-card {
+  background-color: #ffffff;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 20px;
+  transition: transform 0.2s;
+}
+
+.group-card:hover {
+  transform: translateY(-5px);
+}
+
+.group-name {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.members-table {
+  display: none; /* Initially hide member details */
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.members-table.active {
+  display: table; /* Show member details when active class is applied */
+}
+
+.members-table th,
+.members-table td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.total-contribution {
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.group-card a {
+  text-decoration: underline;
+  cursor: pointer;
+}
