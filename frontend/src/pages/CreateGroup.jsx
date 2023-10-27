@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { farm4 } from "../assets"; // Import your image
+import { creategroup } from "../assets"; // Import your image
 
 function CreateGroup() {
   const navigate = useNavigate();
@@ -87,9 +87,9 @@ function CreateGroup() {
             </form>
           </div>
           {/* Div for the image */}
-          <div className="w-full md:w-1/2 p-4" style={{ height: "100%" }}>
+          <div className="w-full md:w-1/2 p-4" style={{ height: "30%" }}>
             <img
-              src={farm4} // Use your image URL
+              src={creategroup} // Use your image URL
               alt="Group Image"
               className="w-full h-full object-cover"
             />

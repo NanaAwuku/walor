@@ -22,9 +22,11 @@ import women2 from './women2.jpeg';
 import women3 from './women3.jpeg';
 import cashout from './cashout.jpeg'
 import walor_logo from './walor_logo.png'
+import creategroup from './heroo.jpg'
 
 export {
   tagType,
+  creategroup,
   walor_logo,
   cashout,
   createCampaign,
