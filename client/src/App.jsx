@@ -1,13 +1,19 @@
-import React from "react";
-import { Route, Routes } from "react-router-dom";
+import React from 'react'
+import {Route, Routes} from 'react-router-dom'
 
-// import { Navbar, Sidebar } from "./components";
-import { Home, CampaignDetails, CreateCampaign, Profile } from "./pages";
+import {Navbar, Sidebar} from './components'
+import {Home, CampaignDetails, CreateCampaign, Profile} from './pages'
 
 const App = () => {
   return (
-    <div className="relative w-full flex flex-row">
-      <div className="">
+    <div className="relative sm:-8 p-4 bg-[#13131a] min-h-screen flex flex-row">
+      <div className="sm:flex hidden mr-10 relative">
+        <Sidebar />
+      </div>
+
+      <div className="flex-1 max-sm:w-full max-w-[1280px] mx-auto sm:pr-5">
+        <Navbar />
+
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/profile" element={<Profile />} />
@@ -16,7 +22,7 @@ const App = () => {
         </Routes>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default App;
+export default App
