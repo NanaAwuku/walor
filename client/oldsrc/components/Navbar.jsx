@@ -19,7 +19,7 @@ const Navbar = () => {
       <div className="lg:flex-1 flex flex-row max-w-[458px] py-2 pl-4 pr-2 h-[52px] bg-[#1c1c24] rounded-[100px]">
         <input
           type="text"
-          placeholder="Search for campaigns"
+          placeholder="Search for groups"
           className="flex w-full font-epilogue font-normal text-[14px] placeholder:text-[#fff] text-white bg-transparent outline-none"
         />
 
